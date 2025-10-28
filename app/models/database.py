@@ -14,8 +14,7 @@ engine = create_async_engine(
 async_session_maker = sessionmaker(
     engine,
     class_=AsyncSession,
-    expire_on_commit=False,
-    async_=True
+    expire_on_commit=False
 )
 
 # Base class for models
