@@ -1,197 +1,315 @@
 # Collection Service - TakeYourTrade
 
-Microservizio backend per la gestione dell'inventario delle carte possedute dagli utenti nella piattaforma TakeYourTrade.
+Backend microservice per la gestione delle collezioni utente nella piattaforma TakeYourTrade.
 
-## 📋 Descrizione
+## Panoramica
 
-Il **Collection Service** è responsabile della gestione completa delle carte nella collezione degli utenti. Questo servizio opera in modo indipendente dagli altri microservizi (Auth, Sync, ecc.) e utilizza **MySQL 8.0+** come database.
+Collection Service è un microservizio FastAPI che gestisce l'inventario delle carte possedute dagli utenti. Fornisce operazioni CRUD complete con autenticazione JWT e isolamento completo dei dati per utente.
 
-## 🛠️ Stack Tecnologico
+### Caratteristiche
 
-- **Linguaggio:** Python 3.11+
-- **Framework:** FastAPI
-- **Database:** MySQL 8.0+ (locale e Docker)
-- **ORM:** SQLAlchemy 2.x (async con `asyncmy`)
-- **Migrazioni:** Alembic (configurato per MySQL async)
-- **Validazione:** Pydantic 2.x
-- **Autenticazione:** JWT con verifica JWKS
-- **Containerizzazione:** Docker + Docker Compose
-- **Testing:** pytest con httpx (async)
+- **API RESTful** completa con FastAPI
+- **Autenticazione JWT** con verifica JWKS
+- **Database MySQL** (MariaDB 11.8+)
+- **Filtri dinamici** per language, foil status, source
+- **Paginazione** integrata
+- **Validazione** input/output con Pydantic
+- **CORS** configurato per domini autorizzati
+- **Test endpoint** per verifica sistema
+- **Documentazione** Swagger/ReDoc
+- **Docker** per deploy containerizzato
 
-## 📁 Struttura del Progetto
+## Stack Tecnologico
+
+- **Linguaggio**: Python 3.11+
+- **Framework**: FastAPI 0.104+
+- **Database**: MySQL 8.0+ / MariaDB 11.8+
+- **ORM**: SQLAlchemy 2.x (async)
+- **Driver**: asyncmy per MySQL async
+- **Migrazioni**: Alembic
+- **Validazione**: Pydantic 2.x
+- **Containerizzazione**: Docker + Docker Compose
+- **Testing**: pytest
+
+## Struttura del Progetto
 
 ```
 collection-service/
 ├── app/
-│   ├── __init__.py
-│   ├── main.py                      # Entry point FastAPI
 │   ├── core/
-│   │   ├── config.py                # Settings e configurazione
-│   │   └── security.py              # JWT verification
-│   ├── dependencies.py               # Dependenze FastAPI
+│   │   ├── config.py           # Configurazione e variabili ambiente
+│   │   └── security.py         # Verifica JWT e JWKS
+│   ├── dependencies.py          # Dipendenze FastAPI
+│   ├── main.py                 # Entry point e routing principale
 │   ├── models/
-│   │   ├── database.py              # Engine e session setup
-│   │   └── item.py                  # Model CollectionItem
+│   │   ├── database.py         # Setup database e session factory
+│   │   └── item.py             # Modello CollectionItem
+│   ├── routers/
+│   │   └── items.py            # Endpoint CRUD
 │   ├── schemas/
-│   │   └── item.py                  # Schemi Pydantic
-│   ├── services/
-│   │   └── item_service.py          # Business logic
-│   └── routers/
-│       └── items.py                 # Endpoints CRUD
-├── migrations/                       # Alembic migrations
-│   ├── env.py
-│   └── versions/
-├── tests/
-│   └── test_collection_api.py       # Test suite
-├── .env.example                     # Template variabili ambiente
-├── .gitignore
-├── alembic.ini
-├── Dockerfile
-├── docker-compose.yml
-├── pytest.ini
-├── requirements.txt
-└── README.md
+│   │   └── item.py             # Schemi Pydantic
+│   └── services/
+│       └── item_service.py     # Business logic
+├── migrations/                 # Alembic migrations
+├── tests/                      # Test suite
+├── Dockerfile                  # Immagine Docker
+├── docker-compose.yml          # Configurazione deploy
+├── requirements.txt            # Dipendenze Python
+└── alembic.ini                 # Configurazione Alembic
 ```
 
-## 🚀 Setup Locale
+## Installazione e Setup Locale
 
 ### Prerequisiti
 
 - Python 3.11+
-- MySQL 8.0+ (locale o Docker)
-- pip
+- MySQL 8.0+ (MariaDB 11.8+)
+- Git
 
-### 1. Clone e Setup Ambiente Virtuale
+### Setup
 
+1. Clone repository:
 ```bash
-# Crea ambiente virtuale
+git clone https://github.com/LCDT20/collection-service.git
+cd collection-service
+```
+
+2. Crea virtual environment:
+```bash
 python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# oppure
+venv\Scripts\activate  # Windows
+```
 
-# Attiva ambiente virtuale
-# Windows:
-venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
-
-# Installa dipendenze
+3. Installa dipendenze:
+```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configurazione Database
-
-Crea un file `.env` nella root del progetto:
-
-```env
-# Database Configuration
-DATABASE_URL=mysql+asyncmy://collection_user:collection_password@localhost:3306/collection_db
-
-# JWT Authentication
-AUTH_JWKS_URL=https://auth.takeyourtrade.com/.well-known/jwks.json
-JWT_AUDIENCE=collection-service
-JWT_ISSUER=https://auth.takeyourtrade.com
-
-# CORS Configuration
-CORS_ORIGINS=["https://app.takeyourtrade.com","http://localhost:3000"]
-
-# Application
-APP_NAME=Collection Service
-APP_VERSION=1.0.0
-DEBUG=True
-```
-
-### 3. Setup Database MySQL
-
-Crea il database e l'utente:
-
-```sql
--- Connetti come root
-mysql -u root -p
-
--- Crea database
-CREATE DATABASE collection_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- Crea utente
-CREATE USER 'collection_user'@'localhost' IDENTIFIED BY 'collection_password';
-
--- Concedi privilegi
-GRANT ALL PRIVILEGES ON collection_db.* TO 'collection_user'@'localhost';
-
--- Applica modifiche
-FLUSH PRIVILEGES;
-```
-
-### 4. Esegui Migrazioni
-
+4. Configura variabili ambiente (copia da `env.example`):
 ```bash
-# Inizializza Alembic (solo la prima volta)
-# NOTA: Se la directory migrations non esiste ancora
-alembic init migrations
+cp env.example .env
+# Modifica .env con le tue credenziali
+```
 
-# Genera prima migrazione (solo dopo setup completo)
-# NOTA: Questo creerà lo script di migrazione
-alembic revision --autogenerate -m "Initial migration for collection items"
-
-# Applica migrazioni
+5. Esegui migrazioni:
+```bash
 alembic upgrade head
 ```
 
-### 5. Avvia Applicazione
-
+6. Avvia server:
 ```bash
-# Avvio sviluppo
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# Oppure direttamente con Python
-python -m app.main
 ```
 
-L'applicazione sarà disponibile su `http://localhost:8000`
+## Deploy con Docker
 
-## 🐳 Setup con Docker
+### Deploy su Hostinger VPS
 
-### Quick Start
+Il servizio è configurato per deploy automatico tramite Docker Compose su Hostinger VPS.
+
+**URL per Componi da URL:**
+```
+https://raw.githubusercontent.com/LCDT20/collection-service/main/docker-compose.yml
+```
+
+1. Accedi a pPanel Hostinger
+2. Vai su VPS → Componi da URL
+3. Incolla l'URL sopra
+4. Clicca Deploy
+
+Le variabili d'ambiente sono già configurate nel docker-compose.yml.
+
+### Build Locale
 
 ```bash
-# Costruisci e avvia servizi (app + MySQL)
-docker-compose up --build
+# Build immagine
+docker-compose build
 
-# In background
+# Avvia container
 docker-compose up -d
 
-# Visualizza logs
-docker-compose logs -f app
-```
+# Logs
+docker-compose logs -f collection-service
 
-### Setup Database in Docker
-
-```bash
-# Esegui migrazioni nel container
-docker exec -it collection_service alembic upgrade head
-
-# Oppure esegui localmente (se .env punta al DB Docker)
-alembic upgrade head
-```
-
-### Comandi Utili
-
-```bash
-# Stop servizi
+# Stop
 docker-compose down
-
-# Stop e rimuovi volumi
-docker-compose down -v
-
-# Rebuild app (mantiene dati DB)
-docker-compose up --build
-
-# Accesso shell al container
-docker exec -it collection_service /bin/bash
-
-# Accesso MySQL
-docker exec -it collection_db mysql -u collection_user -pcollection_password collection_db
 ```
 
-## 🧪 Testing
+## API Endpoints
+
+### Health Check e Test
+
+- `GET /` - Root endpoint
+- `GET /health` - Health check semplice
+- `GET /test/database` - Test connessione database
+- `GET /test/config` - Test configurazione
+- `GET /docs` - Documentazione Swagger UI
+- `GET /redoc` - Documentazione ReDoc
+
+### Collection Items
+
+Tutti gli endpoint richiedono header JWT:
+```
+Authorization: Bearer <token>
+```
+
+#### Crea Item
+```
+POST /api/v1/collections/items/
+Content-Type: application/json
+
+{
+  "card_id": "uuid",
+  "quantity": 1,
+  "condition": "NM",
+  "language": "en",
+  "is_foil": false,
+  "is_signed": false,
+  "is_altered": false,
+  "notes": "Optional notes",
+  "tags": ["tag1", "tag2"],
+  "source": "manual"
+}
+```
+
+#### Lista Items
+```
+GET /api/v1/collections/items/
+Query params:
+  - limit: int (default: 100, max: 500)
+  - offset: int (default: 0)
+  - language: string (optional)
+  - is_foil: boolean (optional)
+  - source: string (optional)
+```
+
+#### Get Item
+```
+GET /api/v1/collections/items/{item_id}
+```
+
+#### Update Item
+```
+PATCH /api/v1/collections/items/{item_id}
+Content-Type: application/json
+
+{
+  "quantity": 2,
+  "condition": "LP"
+}
+```
+
+#### Delete Item
+```
+DELETE /api/v1/collections/items/{item_id}
+```
+
+## Autenticazione
+
+Il servizio usa autenticazione JWT con verifica tramite JWKS.
+
+### Configurazione JWT
+
+Le seguenti variabili d'ambiente devono essere configurate:
+
+- `AUTH_JWKS_URL`: URL del servizio che espone le chiavi JWKS
+- `JWT_AUDIENCE`: Audience atteso nel token
+- `JWT_ISSUER`: Issuer atteso nel token
+
+### Estrazione User ID
+
+Il servizio estrae automaticamente l'user_id dal claim `sub` del JWT token. Questo user_id viene poi usato per filtrare tutte le query, garantendo che ogni utente possa accedere solo ai propri items.
+
+### Esempio Header
+
+```bash
+curl -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." \
+     http://server:8000/api/v1/collections/items/
+```
+
+## Modello Dati
+
+### CollectionItem
+
+| Campo | Tipo | Descrizione |
+|-------|------|-------------|
+| id | UUID | Identificatore univoco |
+| user_id | UUID | Proprietario dell'item |
+| card_id | UUID | Riferimento alla carta |
+| quantity | int | Numero di copie (min 1) |
+| condition | string(10) | Condizione (M, NM, LP, MP, HP) |
+| language | string(5) | Codice lingua (en, it, jp) |
+| is_foil | boolean | Carta foil |
+| is_signed | boolean | Carta firmata |
+| is_altered | boolean | Carta alterata |
+| notes | text | Note aggiuntive |
+| tags | JSON | Array di tag personalizzati |
+| source | string(50) | Origine (cardtrader, manual) |
+| cardtrader_id | bigint | ID esterno CardTrader |
+| last_synced_at | datetime | Ultima sincronizzazione |
+| added_at | datetime | Data creazione (auto) |
+| updated_at | datetime | Data ultimo aggiornamento (auto) |
+
+### Indici
+
+- Primary Key: `id`
+- Unique: `cardtrader_id`
+- Index: `user_id`, `card_id`, `condition`, `language`, `source`
+- Composite Index: `(user_id, card_id)`
+
+### Constraints
+
+- CHECK: `quantity > 0`
+- FOREIGN KEY: `user_id`, `card_id` (riferimenti esterni)
+
+## Filtri e Paginazione
+
+### Filtri Disponibili
+
+- **language**: Filtra per lingua (es: "en", "it")
+- **is_foil**: Filtra per carte foil (true/false)
+- **source**: Filtra per origine (es: "cardtrader", "manual")
+
+### Paginazione
+
+- **limit**: Numero massimo di risultati (default: 100, max: 500)
+- **offset**: Numero di risultati da saltare (default: 0)
+
+### Ordinamento
+
+I risultati sono ordinati per data di creazione (più recenti prima).
+
+## Migrazioni Database
+
+### Crea Nuova Migration
+
+```bash
+alembic revision --autogenerate -m "description"
+```
+
+### Applica Migrazioni
+
+```bash
+# Ultima versione
+alembic upgrade head
+
+# Versione specifica
+alembic upgrade <revision>
+
+# Rollback
+alembic downgrade -1
+```
+
+### Stato Migrazioni
+
+```bash
+alembic current
+alembic history
+```
+
+## Testing
 
 ### Esegui Test
 
@@ -199,303 +317,148 @@ docker exec -it collection_db mysql -u collection_user -pcollection_password col
 # Tutti i test
 pytest
 
-# Con verbose
-pytest -v
-
-# Specifico file
+# Test specifici
 pytest tests/test_collection_api.py
 
 # Con coverage
 pytest --cov=app tests/
-
-# In Docker
-docker-compose exec app pytest
 ```
 
-## 📡 API Endpoints
+### Test Coverage
 
-### Base URL
+I test coprono:
+- Endpoint CRUD
+- Autenticazione JWT
+- Filtri e paginazione
+- Validazione input
+- Isolamento dati per utente
 
-- **Local:** `http://localhost:8000`
-- **Docker:** `http://localhost:8000`
-- **Produzione:** (configurabile)
+## Variabili d'Ambiente
 
-### Authentication
+### Obbligatorie
 
-Tutti gli endpoint (eccetto `/health`) richiedono autenticazione JWT:
+- `DATABASE_URL`: Connection string MySQL (mysql+asyncmy://user:pass@host:port/db)
 
-```
-Authorization: Bearer <token>
-```
+### Opzionali (con default)
 
-### Endpoints
+- `AUTH_JWKS_URL`: https://auth.takeyourtrade.com/.well-known/jwks.json
+- `JWT_AUDIENCE`: collection-service
+- `JWT_ISSUER`: https://auth.takeyourtrade.com
+- `CORS_ORIGINS`: JSON array di domini autorizzati
+- `DEBUG`: false (production)
 
-#### Health Check
+Vedi `env.example` per template completo.
 
-```http
-GET /health
-GET /
-```
+## CORS Configuration
 
-#### Collection Items
+Il servizio è configurato per accettare richieste da:
 
-**Lista Items** (con filtri e paginazione)
-```http
-GET /api/v1/collections/items/
-  ?limit=100
-  &offset=0
-  &language=en
-  &is_foil=true
-  &source=cardtrader
-```
+- https://app.takeyourtrade.com
+- https://takeyourtrade.com
+- https://www.takeyourtrade.com
+- http://localhost:3000 (dev)
 
-**Crea Item**
-```http
-POST /api/v1/collections/items/
-Content-Type: application/json
+Per modificare i domini autorizzati, aggiorna `CORS_ORIGINS` nelle variabili d'ambiente.
 
-{
-  "card_id": "uuid",
-  "quantity": 2,
-  "condition": "NM",
-  "language": "en",
-  "is_foil": false,
-  "is_signed": false,
-  "is_altered": false,
-  "notes": "Limited edition",
-  "tags": ["foil", "special"],
-  "source": "cardtrader",
-  "cardtrader_id": 12345
-}
-```
+## Monitoring e Health Checks
 
-**Ottieni Item Specifico**
-```http
-GET /api/v1/collections/items/{item_id}
-```
+### Health Endpoints
 
-**Aggiorna Item**
-```http
-PATCH /api/v1/collections/items/{item_id}
-Content-Type: application/json
+- `/health`: Basic health check
+- `/test/database`: Test connessione database
+- `/test/config`: Verifica configurazione
+- `/test/full`: Test sistema completo
 
-{
-  "quantity": 3,
-  "condition": "LP"
-}
-```
+### Docker Health Check
 
-**Elimina Item**
-```http
-DELETE /api/v1/collections/items/{item_id}
-```
+Il Dockerfile include un health check che verifica `/health` ogni 30 secondi.
 
-### Documentazione API
+## Troubleshooting
 
-- **Swagger UI:** `http://localhost:8000/docs`
-- **ReDoc:** `http://localhost:8000/redoc`
-
-## 📊 Modello Dati
-
-### CollectionItem
-
-| Campo | Tipo | Obbligatorio | Descrizione |
-|-------|------|--------------|-------------|
-| `id` | UUID | ✅ | Primary Key |
-| `user_id` | UUID | ✅ | Owner |
-| `card_id` | UUID | ✅ | Card reference |
-| `quantity` | Integer | ✅ | Numero copie (>= 1) |
-| `condition` | String(10) | ✅ | Condizione carta |
-| `language` | String(5) | ✅ | Codice lingua |
-| `is_foil` | Boolean | ✅ | Carta foil |
-| `is_signed` | Boolean | ❌ | Carta firmata |
-| `is_altered` | Boolean | ❌ | Carta alterata |
-| `notes` | Text | ❌ | Note aggiuntive |
-| `tags` | JSON | ❌ | Tag personalizzati |
-| `source` | String(50) | ❌ | Sorgente (es. "cardtrader") |
-| `cardtrader_id` | BigInteger | ❌ | ID CardTrader (UNIQUE) |
-| `last_synced_at` | DateTime | ❌ | Ultima sync |
-| `added_at` | DateTime | ✅ | Data creazione |
-| `updated_at` | DateTime | ✅ | Data ultimo aggiornamento |
-
-## 🔐 Sicurezza
-
-### JWT Authentication
-
-Il servizio verifica i token JWT utilizzando:
-- **JWKS URL** (`AUTH_JWKS_URL`)
-- **Audience** (`JWT_AUDIENCE`)
-- **Issuer** (`JWT_ISSUER`)
-
-I token devono contenere il claim `sub` con il `user_id` dell'utente.
-
-### Ownership Check
-
-Tutte le operazioni su item specifici verificano l'ownership:
-- Solo il proprietario può vedere/modificare/eliminare i propri item
-- La lista filtra automaticamente per `user_id`
-
-## 🔄 Migrazioni Database
-
-### Genera Nuova Migrazione
+### Container non si avvia
 
 ```bash
-# Dopo modifiche ai modelli
-alembic revision --autogenerate -m "Description"
-
-# Crea migrazione vuota
-alembic revision -m "Description"
+docker-compose logs collection-service
 ```
 
-### Applica Migrazioni
+Verifica errori nelle variabili d'ambiente o nel database.
 
-```bash
-# Applica tutte
-alembic upgrade head
+### Errore connessione database
 
-# Versione specifica
-alembic upgrade <revision>
+- Verifica `DATABASE_URL` nel docker-compose.yml
+- Controlla che IP VPS sia whitelisted nel pannello hosting
+- Verifica che database esista e utente abbia permessi
 
-# Downgrade
-alembic downgrade -1
+### Errore CORS
 
-# In Docker
-docker exec -it collection_service alembic upgrade head
-```
+- Verifica formato JSON in `CORS_ORIGINS`
+- Assicurati che il dominio frontend sia nell'array
 
-### Rollback
+### Errore JWT
 
-```bash
-# Indietro di 1 versione
-alembic downgrade -1
+- Verifica che `AUTH_JWKS_URL` sia raggiungibile
+- Controlla che `JWT_AUDIENCE` e `JWT_ISSUER` matchino
 
-# Versione specifica
-alembic downgrade <revision>
+## Performance
 
-# Rimuovi tutto (ATTENZIONE!)
-alembic downgrade base
-```
+### Ottimizzazioni Implementate
 
-## 📦 Deploy su VPS Hostinger
+- Pool di connessioni database
+- Indici su campi filtrati frequentemente
+- Paginazione per limitare risultati
+- Query async per non bloccare I/O
+- Connection pooling con pool_pre_ping
 
-### 1. Preparazione Server
+### Limiti
 
-```bash
-# Aggiorna sistema
-sudo apt update && sudo apt upgrade -y
+- Massimo 500 items per richiesta lista
+- Timeout connessione database: 5 secondi
+- Pool size: configurabile in `database.py`
 
-# Installa Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
+## Sicurezza
 
-# Installa Docker Compose
-sudo apt install docker-compose -y
+### Best Practices Implementate
 
-# Aggiungi utente a gruppo docker
-sudo usermod -aG docker $USER
-```
+- Autenticazione JWT obbligatoria per endpoint API
+- Isolamento dati per utente (user_id filtering)
+- Validazione input con Pydantic
+- SQL injection prevention con SQLAlchemy ORM
+- HTTPS in production (da configurare nel reverse proxy)
+- Non-root user nel container Docker
+- Health checks attivi
+- CORS limitato a domini autorizzati
 
-### 2. Deploy Applicazione
+### Raccomandazioni
 
-```bash
-# Clona repository
-git clone <repository-url> collection-service
-cd collection-service
+- Usa reverse proxy (nginx/traefik) per HTTPS
+- Ruota periodicamente le credenziali database
+- Monitora i log per accessi sospetti
+- Implementa rate limiting
+- Usa secret management per ambiente production
 
-# Crea .env
-cp .env.example .env
-nano .env  # Modifica con valori produzione
+## Development
 
-# Build e avvia
-docker-compose up -d
+### Struttura Codice
 
-# Esegui migrazioni
-docker exec -it collection_service alembic upgrade head
+- **routers/**: Endpoint HTTP e dependency injection
+- **services/**: Business logic e logica applicativa
+- **models/**: Strutture dati e database
+- **schemas/**: Validazione input/output
+- **core/**: Configurazione e utility
 
-# Verifica logs
-docker-compose logs -f
-```
+### Code Style
 
-### 3. Configurazione Nginx (Reverse Proxy)
+- Follow PEP 8
+- Type hints per tutte le funzioni
+- Docstrings per classi e funzioni pubbliche
+- Async/await per operazioni I/O
 
-```nginx
-server {
-    listen 80;
-    server_name collection-api.takeyourtrade.com;
-
-    location / {
-        proxy_pass http://localhost:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-### 4. SSL con Let's Encrypt
-
-```bash
-# Installa Certbot
-sudo apt install certbot python3-certbot-nginx -y
-
-# Configura certificato
-sudo certbot --nginx -d collection-api.takeyourtrade.com
-```
-
-## 🐛 Troubleshooting
-
-### Problema connessione MySQL
-
-```bash
-# Verifica MySQL è attivo
-docker-compose ps
-
-# Controlla logs DB
-docker-compose logs db
-
-# Testa connessione
-docker exec -it collection_service python -c "import asyncio; from app.models.database import engine; asyncio.run(engine.connect())"
-```
-
-### Migrazioni fallite
-
-```bash
-# Resetta migrazioni (ATTENZIONE: perdi dati!)
-alembic downgrade base
-alembic upgrade head
-```
-
-### Test falliti
-
-```bash
-# Pulisci cache
-pytest --cache-clear
-
-# Reinstalla dipendenze
-pip install --force-reinstall -r requirements.txt
-```
-
-## 📝 Note Sviluppo
-
-- Usa `async/await` ovunque per operazioni I/O
-- Tutte le query DB sono async con SQLAlchemy 2.x
-- I tipi UUID sono gestiti con `as_uuid=True`
-- Il campo `tags` usa `JSON` MySQL (non JSONB PostgreSQL)
-- Le migrazioni Alembic sono configurate per async MySQL
-- Gli endpoint rispettano i principi REST
-
-## 📄 Licenza
+## License
 
 Proprietario - TakeYourTrade
 
-## 👥 Contributori
+## Support
 
-- Team TakeYourTrade
-
-## 📞 Supporto
-
-Per supporto o domande:
-- Email: dev@takeyourtrade.com
-- Issue Tracker: [GitHub Issues]
-
+Per domande o problemi:
+- Documentazione: http://server:8000/docs
+- Repository: https://github.com/LCDT20/collection-service
