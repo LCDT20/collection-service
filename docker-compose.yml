@@ -8,21 +8,21 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # Database Configuration (OBBLIGATORIO)
-      - DATABASE_URL=${DATABASE_URL}
+      # Database Configuration
+      - DATABASE_URL=mysql+asyncmy://u792485705_tyts:oA5843eC@srv1502.hstgr.io:3306/u792485705_maintyt
       
       # JWT Authentication
-      - AUTH_JWKS_URL=${AUTH_JWKS_URL:-https://auth.takeyourtrade.com/.well-known/jwks.json}
-      - JWT_AUDIENCE=${JWT_AUDIENCE:-collection-service}
-      - JWT_ISSUER=${JWT_ISSUER:-https://auth.takeyourtrade.com}
+      - AUTH_JWKS_URL=https://auth.takeyourtrade.com/.well-known/jwks.json
+      - JWT_AUDIENCE=collection-service
+      - JWT_ISSUER=https://auth.takeyourtrade.com
       
-      # CORS Configuration (domini autorizzati)
-      - CORS_ORIGINS=${CORS_ORIGINS:-["https://app.takeyourtrade.com","https://takeyourtrade.com","https://www.takeyourtrade.com"]}
+      # CORS Configuration
+      - CORS_ORIGINS=["https://app.takeyourtrade.com","https://takeyourtrade.com","https://www.takeyourtrade.com","http://localhost:3000"]
       
       # Application Info
       - APP_NAME=Collection Service
       - APP_VERSION=1.0.0
-      - DEBUG=${DEBUG:-false}
+      - DEBUG=false
     
     networks:
       - collection_network
